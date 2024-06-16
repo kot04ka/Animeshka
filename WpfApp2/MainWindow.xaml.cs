@@ -2,48 +2,51 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 
 namespace AnimeApp
 {
-	public partial class MainWindow : Window
-	{
-		private int currentPage = 1;
-		private const int itemsPerPage = 10;
+    public partial class MainWindow : Window
+    {
+        private const int itemsPerPage = 10; // Количество тайтлов
+        private const int maxDescriptionLength = 80; // Максимальная длина описания
 
-		public MainWindow()
-		{
-			InitializeComponent();
-			LoadAnime();
-		}
+        public MainWindow()
+        {
+            InitializeComponent();
+            LoadNewestEpisodes();
+        }
 
-		private async void LoadAnime()
-		{
-			try
-			{
-				var animeList = await GetAnimeList(currentPage);
-				AnimeListView.ItemsSource = animeList;
-			}
-			catch (Exception ex)
-			{
-				MessageBox.Show($"Error loading anime list: {ex.Message}");
-			}
-		}
+        private async void LoadNewestEpisodes()
+        {
+            try
+            {
+                var newEpisodes = await GetNewestEpisodes();
+                EpisodesControl.ItemsSource = newEpisodes;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки новых эпизодов: {ex.Message}");
+            }
+        }
 
-		private async Task<List<Anime>> GetAnimeList(int page)
-		{
-			string url = "https://graphql.anilist.co";
-			string query = @"
+        private async Task<List<Anime>> GetNewestEpisodes()
+        {
+            string url = "https://graphql.anilist.co";
+            string query = @"
                 query ($page: Int, $perPage: Int) {
                   Page(page: $page, perPage: $perPage) {
-                    media(type: ANIME) {
+                    media(type: ANIME, sort: TRENDING_DESC) {
                       id
                       title {
                         romaji
                       }
-                      description
+                      description(asHtml: false)
                       coverImage {
                         large
                       }
@@ -55,108 +58,177 @@ namespace AnimeApp
                   }
                 }";
 
-			var variables = new
-			{
-				page = page,
-				perPage = itemsPerPage
-			};
+            var variables = new
+            {
+                page = 1,
+                perPage = itemsPerPage
+            };
 
-			using (var client = new HttpClient())
-			{
-				var jsonContent = new StringContent(
-					new JObject
-					{
-						["query"] = query,
-						["variables"] = JObject.FromObject(variables)
-					}.ToString(),
-					System.Text.Encoding.UTF8, "application/json");
+            using (var client = new HttpClient())
+            {
+                var jsonContent = new StringContent(
+                    new JObject
+                    {
+                        ["query"] = query,
+                        ["variables"] = JObject.FromObject(variables)
+                    }.ToString(), System.Text.Encoding.UTF8, "application/json");
 
-				var response = await client.PostAsync(url, jsonContent);
-				var responseString = await response.Content.ReadAsStringAsync();
-				var data = JObject.Parse(responseString)["data"]["Page"]["media"];
+                var response = await client.PostAsync(url, jsonContent);
+                response.EnsureSuccessStatusCode();
 
-				var animeList = new List<Anime>();
-				foreach (var item in data)
-				{
-					var streamingEpisodes = new List<StreamingEpisode>();
-					foreach (var episode in item["streamingEpisodes"])
-					{
-						streamingEpisodes.Add(new StreamingEpisode
-						{
-							Title = episode["title"].ToString(),
-							Url = episode["url"].ToString()
-						});
-					}
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                var data = JObject.Parse(jsonResponse)["data"]["Page"]["media"];
 
-					animeList.Add(new Anime
-					{
-						Title = item["title"]["romaji"].ToString(),
-						Description = item["description"].ToString(),
-						Image = item["coverImage"]["large"].ToString(),
-						Episodes = streamingEpisodes
-					});
-				}
-				return animeList;
-			}
-		}
+                var newEpisodes = new List<Anime>();
+                foreach (var item in data)
+                {
+                    var anime = item.ToObject<Anime>();
+                    anime.Description = Regex.Replace(anime.Description, "<.*?>", string.Empty).Trim();
 
-		private void AnimeListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
-		{
-			if (AnimeListView.SelectedItem is Anime selectedAnime)
-			{
-				AnimeTitle.Text = selectedAnime.Title;
-				AnimeDescription.Text = selectedAnime.Description;
-				AnimeImage.Source = new System.Windows.Media.Imaging.BitmapImage(new Uri(selectedAnime.Image));
-				EpisodesListBox.ItemsSource = selectedAnime.Episodes;
-			}
-		}
+                    if (anime.Description.Length > maxDescriptionLength)
+                    {
+                        anime.Description = anime.Description.Substring(0, maxDescriptionLength) + "...";
+                    }
 
-		private void EpisodesListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-		{
-			if (EpisodesListBox.SelectedItem is StreamingEpisode selectedEpisode)
-			{
-				try
-				{
-					var tabItem = ((TabControl)((Grid)((StackPanel)sender).Parent).Parent).SelectedItem as TabItem;
-					var mediaElement = tabItem.Header.ToString() == "Плеер" ? AnimePlayerFull : AnimePlayer;
+                    newEpisodes.Add(anime);
+                }
 
-					mediaElement.Source = new Uri(selectedEpisode.Url);
-					mediaElement.Play();
-				}
-				catch (Exception ex)
-				{
-					MessageBox.Show($"Error playing episode: {ex.Message}");
-				}
-			}
-		}
+                return newEpisodes;
+            }
+        }
 
-		private void PreviousPage_Click(object sender, RoutedEventArgs e)
-		{
-			if (currentPage > 1)
-			{
-				currentPage--;
-				LoadAnime();
-			}
-		}
+        private async void SearchButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var searchQuery = SearchBox.Text == "Введите название аниме..." ? "" : SearchBox.Text;
+                var animeList = await GetNewestEpisodes(); // Подразумеваем, что это обновленная версия для поиска
+                EpisodesControl.ItemsSource = animeList;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка поиска: {ex.Message}");
+            }
+        }
 
-		private void NextPage_Click(object sender, RoutedEventArgs e)
-		{
-			currentPage++;
-			LoadAnime();
-		}
-	}
+        private void SearchBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (SearchBox.Text == "Введите название аниме...")
+            {
+                SearchBox.Text = "";
+                SearchBox.Foreground = new SolidColorBrush(Colors.Black);
+            }
+        }
 
-	public class Anime
-	{
-		public string Title { get; set; }
-		public string Description { get; set; }
-		public string Image { get; set; }
-		public List<StreamingEpisode> Episodes { get; set; }
-	}
+        private void SearchBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(SearchBox.Text))
+            {
+                SearchBox.Text = "Введите название аниме...";
+                SearchBox.Foreground = new SolidColorBrush(Colors.Gray);
+            }
+        }
 
-	public class StreamingEpisode
-	{
-		public string Title { get; set; }
-		public string Url { get; set; }
-	}
+        private void OnAnimeClick(object sender, MouseButtonEventArgs e)
+        {
+            var border = sender as Border;
+            var anime = border.DataContext as Anime;
+            if (anime != null && anime.StreamingEpisodes != null && anime.StreamingEpisodes.Count > 0)
+            {
+                // Открыть первый эпизод для просмотра
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = anime.StreamingEpisodes[0].Url,
+                    UseShellExecute = true
+                });
+            }
+        }
+
+        private void MenuButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (MenuPanel.Visibility == Visibility.Collapsed)
+            {
+                MenuPanel.Visibility = Visibility.Visible;
+                MenuPanel.Width = 300;
+                MenuButton.Visibility = Visibility.Collapsed; // Скрыть кнопку меню
+                Grid.SetColumnSpan(SearchPanel, 1); // Сдвиг поиска влево
+            }
+            else
+            {
+                MenuPanel.Visibility = Visibility.Collapsed;
+                MenuPanel.Width = 0;
+                MenuButton.Visibility = Visibility.Visible; // Показать кнопку меню
+                Grid.SetColumnSpan(SearchPanel, 2); // Вернуть поиск на место
+            }
+        }
+
+        private void LogReg_Click(object sender, RoutedEventArgs e)
+        {
+            // Логика для Log/Reg
+        }
+
+        private void Favourites_Click(object sender, RoutedEventArgs e)
+        {
+            // Логика для Favourites
+        }
+
+        private void WatchTogether_Click(object sender, RoutedEventArgs e)
+        {
+            // Логика для Watch Together
+        }
+
+        private void Titles_Click(object sender, RoutedEventArgs e)
+        {
+            // Логика для Titles
+        }
+
+        private void Window_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                CloseMenuPanel();
+            }
+        }
+
+        private void Window_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.OriginalSource == this)
+            {
+                CloseMenuPanel();
+            }
+        }
+
+        private void CloseMenuPanel()
+        {
+            MenuPanel.Visibility = Visibility.Collapsed;
+            MenuPanel.Width = 0;
+            MenuButton.Visibility = Visibility.Visible; // Показать кнопку меню
+            Grid.SetColumnSpan(SearchPanel, 2); // Вернуть поиск на место
+        }
+    }
+
+    public class Anime
+    {
+        public int Id { get; set; }
+        public Title Title { get; set; }
+        public string Description { get; set; }
+        public CoverImage CoverImage { get; set; }
+        public List<Episode> StreamingEpisodes { get; set; }
+    }
+
+    public class Title
+    {
+        public string Romaji { get; set; }
+    }
+
+    public class CoverImage
+    {
+        public string Large { get; set; }
+    }
+
+    public class Episode
+    {
+        public string Title { get; set; }
+        public string Url { get; set; }
+    }
 }
