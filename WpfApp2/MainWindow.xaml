@@ -7,6 +7,33 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
-        
+        <TabControl>
+            <TabItem Header="Тайтлы">
+                <ListView x:Name="AnimeListView">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Картинка" Width="100">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Image Source="{Binding ImageUrl}" Width="100" Height="100"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="Название" DisplayMemberBinding="{Binding Name}" Width="200"/>
+                            <GridViewColumn Header="Описание" DisplayMemberBinding="{Binding Description}" Width="400"/>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </TabItem>
+            <TabItem Header="Плеер">
+                <!-- Плеер будет добавлен позже -->
+            </TabItem>
+            <TabItem Header="Вход">
+                <!-- Окно входа будет добавлено позже -->
+            </TabItem>
+            <TabItem Header="Избранные">
+                <!-- Избранные будут добавлены позже -->
+            </TabItem>
+        </TabControl>
     </Grid>
 </Window>
