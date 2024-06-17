@@ -4,6 +4,7 @@
         Title="AnimeApp" Height="800" Width="1280" Background="#1e1e1e" Foreground="White"
         KeyDown="Window_KeyDown" MouseDown="Window_MouseDown">
     <Window.Resources>
+        <!-- Стили -->
         <Style x:Key="ClickableStyle" TargetType="Border">
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="CornerRadius" Value="20"/>
@@ -118,59 +119,85 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
+        <!-- Панель поиска -->
         <StackPanel x:Name="SearchPanel" Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal" Background="#1e1e1e" Margin="10" HorizontalAlignment="Center" VerticalAlignment="Top">
+            <Button Content="Random" Width="100" Height="35" Margin="0,0,10,0" Click="RandomButton_Click"/>
             <Border Style="{StaticResource SearchBoxBorderStyle}">
                 <TextBox Name="SearchBox" Width="600" Height="35" Style="{StaticResource SearchBoxStyle}" Text="Введите название аниме..." 
-                         GotFocus="SearchBox_GotFocus" LostFocus="SearchBox_LostFocus"/>
+                         GotFocus="SearchBox_GotFocus" LostFocus="SearchBox_LostFocus" KeyDown="SearchBox_KeyDown"/>
             </Border>
         </StackPanel>
 
+        <!-- Кнопка меню -->
         <Button x:Name="MenuButton" Style="{StaticResource MenuButtonStyle}" Content="☰" Click="MenuButton_Click"
                 HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10"/>
 
-        <ScrollViewer x:Name="MainScrollViewer" Grid.Row="1" Grid.Column="0" Margin="10" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly">
-            <ItemsControl x:Name="EpisodesControl">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center"/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Style="{StaticResource ClickableStyle}" Margin="10" Width="250" Height="375">
-                            <Grid>
-                                <Border CornerRadius="20" ClipToBounds="True">
-                                    <Rectangle RadiusX="20" RadiusY="20" Width="250" Height="375">
-                                        <Rectangle.Fill>
-                                            <ImageBrush ImageSource="{Binding CoverImage.Large}" Stretch="Fill"/>
-                                        </Rectangle.Fill>
-                                    </Rectangle>
-                                </Border>
-                                <Border Style="{StaticResource OverlayStyle}" CornerRadius="20"/>
-                                <Grid Style="{StaticResource InfoGridStyle}">
-                                    <StackPanel VerticalAlignment="Top" Margin="5">
-                                        <TextBlock Text="{Binding Title.Romaji}" FontSize="16" FontWeight="Bold" Foreground="White" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" TextAlignment="Center"/>
-                                    </StackPanel>
-                                    <StackPanel VerticalAlignment="Center" Margin="5">
-                                        <TextBlock Text="{Binding Description}" FontSize="14" Foreground="White" TextWrapping="Wrap" MaxHeight="90" VerticalAlignment="Center" TextAlignment="Center"/>
-                                    </StackPanel>
+        <!-- Панель результатов поиска -->
+        <ScrollViewer x:Name="SearchResultsPanel" Grid.Row="1" Grid.Column="0" Margin="10" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly">
+            <StackPanel>
+                <ItemsControl x:Name="EpisodesControl">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource ClickableStyle}" Margin="10" Width="250" Height="375">
+                                <Grid>
+                                    <Border CornerRadius="20" ClipToBounds="True">
+                                        <Rectangle RadiusX="20" RadiusY="20" Width="250" Height="375">
+                                            <Rectangle.Fill>
+                                                <ImageBrush ImageSource="{Binding CoverImage.Large}" Stretch="Fill"/>
+                                            </Rectangle.Fill>
+                                        </Rectangle>
+                                    </Border>
+                                    <Border Style="{StaticResource OverlayStyle}" CornerRadius="20"/>
+                                    <Grid Style="{StaticResource InfoGridStyle}">
+                                        <StackPanel VerticalAlignment="Top" Margin="5">
+                                            <TextBlock Text="{Binding Title.Romaji}" FontSize="16" FontWeight="Bold" Foreground="White" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" TextAlignment="Center"/>
+                                        </StackPanel>
+                                        <StackPanel VerticalAlignment="Center" Margin="5">
+                                            <TextBlock Text="{Binding Description}" FontSize="14" Foreground="White" TextWrapping="Wrap" MaxHeight="90" VerticalAlignment="Center" TextAlignment="Center"/>
+                                        </StackPanel>
+                                    </Grid>
                                 </Grid>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
         </ScrollViewer>
 
         <!-- Панель меню -->
         <Border x:Name="MenuPanel" Grid.RowSpan="2" Grid.Column="1" Background="#333" Width="0" HorizontalAlignment="Right" Visibility="Collapsed">
             <StackPanel Style="{StaticResource MenuPanelStyle}">
                 <Button x:Name="CloseMenuButton" Style="{StaticResource CloseMenuButtonStyle}" Content="✖" Click="MenuButton_Click"/>
+                <Button Content="Home" Style="{StaticResource MenuButtonStyleText}" Click="HomeButton_Click"/>
                 <Button Content="Log/Reg" Style="{StaticResource MenuButtonStyleText}" Click="LogReg_Click"/>
                 <Button Content="Favourites" Style="{StaticResource MenuButtonStyleText}" Click="Favourites_Click"/>
                 <Button Content="Watch Together" Style="{StaticResource MenuButtonStyleText}" Click="WatchTogether_Click"/>
                 <Button Content="Titles" Style="{StaticResource MenuButtonStyleText}" Click="Titles_Click"/>
             </StackPanel>
         </Border>
+
+        <!-- Панель для отображения деталей аниме -->
+        <StackPanel x:Name="DetailsPanel" Grid.Row="1" Grid.ColumnSpan="2" Visibility="Collapsed" Margin="10">
+            <StackPanel Orientation="Horizontal">
+                <Image x:Name="AnimeCoverImage" Width="250" Height="375" Margin="10"/>
+                <StackPanel Margin="10">
+                    <TextBlock x:Name="AnimeTitle" FontSize="24" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock x:Name="AnimeDescription" FontSize="14" Foreground="White" TextWrapping="Wrap" MaxWidth="600"/>
+                    <TextBlock Text="Episodes:" FontSize="18" FontWeight="Bold" Foreground="White" Margin="10,20,0,0"/>
+                    <ItemsControl x:Name="EpisodesList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Title}" FontSize="14" Foreground="White" Margin="5"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
     </Grid>
 </Window>
