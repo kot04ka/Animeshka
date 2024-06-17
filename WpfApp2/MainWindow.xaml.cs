@@ -1,234 +1,287 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
+﻿using System;
+using System.IO;
 using System.Net.Http;
-using System.Text.RegularExpressions;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Threading;
 
-namespace AnimeApp
+namespace WpfApp2
 {
     public partial class MainWindow : Window
     {
-        private const int itemsPerPage = 10; // Количество тайтлов
-        private const int maxDescriptionLength = 80; // Максимальная длина описания
+        private static readonly HttpClient client = new HttpClient();
+        private List<Anime> allAnimeTitles = new List<Anime>();
+        private DispatcherTimer searchTimer;
+
+        private const string SearchGraphQLQuery = @"
+        query ($search: String) {
+          Page {
+            media(search: $search, type: ANIME) {
+              id
+              title {
+                romaji
+                english
+                native
+              }
+              coverImage {
+                large
+              }
+              description
+            }
+          }
+        }";
+
+        private const string EpisodesGraphQLQuery = @"
+        query ($id: Int) {
+          Media(id: $id) {
+            id
+            title {
+              romaji
+              english
+              native
+            }
+            streamingEpisodes {
+              title
+              thumbnail
+              url
+            }
+          }
+        }";
 
         public MainWindow()
         {
             InitializeComponent();
-            LoadNewestEpisodes();
+            searchTimer = new DispatcherTimer();
+            searchTimer.Interval = TimeSpan.FromMilliseconds(300);
+            searchTimer.Tick += SearchTimer_Tick;
         }
 
-        private async void LoadNewestEpisodes()
+        private void SearchTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
         {
-            try
-            {
-                var newEpisodes = await GetNewestEpisodes();
-                EpisodesControl.ItemsSource = newEpisodes;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка загрузки новых эпизодов: {ex.Message}");
-            }
+            searchTimer.Stop();
+            searchTimer.Start();
         }
 
-        private async Task<List<Anime>> GetNewestEpisodes()
+        private async void SearchTimer_Tick(object sender, EventArgs e)
         {
-            string url = "https://graphql.anilist.co";
-            string query = @"
-                query ($page: Int, $perPage: Int) {
-                  Page(page: $page, perPage: $perPage) {
-                    media(type: ANIME, sort: TRENDING_DESC) {
-                      id
-                      title {
-                        romaji
-                      }
-                      description(asHtml: false)
-                      coverImage {
-                        large
-                      }
-                      streamingEpisodes {
-                        title
-                        url
-                      }
-                    }
-                  }
-                }";
-
-            var variables = new
+            searchTimer.Stop();
+            string searchTerm = SearchTextBox.Text;
+            if (!string.IsNullOrWhiteSpace(searchTerm) && searchTerm.Length >= 3)
             {
-                page = 1,
-                perPage = itemsPerPage
-            };
-
-            using (var client = new HttpClient())
-            {
-                var jsonContent = new StringContent(
-                    new JObject
-                    {
-                        ["query"] = query,
-                        ["variables"] = JObject.FromObject(variables)
-                    }.ToString(), System.Text.Encoding.UTF8, "application/json");
-
-                var response = await client.PostAsync(url, jsonContent);
-                response.EnsureSuccessStatusCode();
-
-                var jsonResponse = await response.Content.ReadAsStringAsync();
-                var data = JObject.Parse(jsonResponse)["data"]["Page"]["media"];
-
-                var newEpisodes = new List<Anime>();
-                foreach (var item in data)
-                {
-                    var anime = item.ToObject<Anime>();
-                    anime.Description = Regex.Replace(anime.Description, "<.*?>", string.Empty).Trim();
-
-                    if (anime.Description.Length > maxDescriptionLength)
-                    {
-                        anime.Description = anime.Description.Substring(0, maxDescriptionLength) + "...";
-                    }
-
-                    newEpisodes.Add(anime);
-                }
-
-                return newEpisodes;
-            }
-        }
-
-        private async void SearchButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var searchQuery = SearchBox.Text == "Введите название аниме..." ? "" : SearchBox.Text;
-                var animeList = await GetNewestEpisodes(); // Подразумеваем, что это обновленная версия для поиска
-                EpisodesControl.ItemsSource = animeList;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка поиска: {ex.Message}");
-            }
-        }
-
-        private void SearchBox_GotFocus(object sender, RoutedEventArgs e)
-        {
-            if (SearchBox.Text == "Введите название аниме...")
-            {
-                SearchBox.Text = "";
-                SearchBox.Foreground = new SolidColorBrush(Colors.Black);
-            }
-        }
-
-        private void SearchBox_LostFocus(object sender, RoutedEventArgs e)
-        {
-            if (string.IsNullOrWhiteSpace(SearchBox.Text))
-            {
-                SearchBox.Text = "Введите название аниме...";
-                SearchBox.Foreground = new SolidColorBrush(Colors.Gray);
-            }
-        }
-
-        private void OnAnimeClick(object sender, MouseButtonEventArgs e)
-        {
-            var border = sender as Border;
-            var anime = border.DataContext as Anime;
-            if (anime != null && anime.StreamingEpisodes != null && anime.StreamingEpisodes.Count > 0)
-            {
-                // Открыть первый эпизод для просмотра
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = anime.StreamingEpisodes[0].Url,
-                    UseShellExecute = true
-                });
-            }
-        }
-
-        private void MenuButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (MenuPanel.Visibility == Visibility.Collapsed)
-            {
-                MenuPanel.Visibility = Visibility.Visible;
-                MenuPanel.Width = 300;
-                MenuButton.Visibility = Visibility.Collapsed; // Скрыть кнопку меню
-                Grid.SetColumnSpan(SearchPanel, 1); // Сдвиг поиска влево
+                await SearchAnime(searchTerm);
+                FilterAnimeTitles(searchTerm);
             }
             else
             {
-                MenuPanel.Visibility = Visibility.Collapsed;
-                MenuPanel.Width = 0;
-                MenuButton.Visibility = Visibility.Visible; // Показать кнопку меню
-                Grid.SetColumnSpan(SearchPanel, 2); // Вернуть поиск на место
+                ResultsListBox.Items.Clear();
             }
         }
 
-        private void LogReg_Click(object sender, RoutedEventArgs e)
+        private void FilterAnimeTitles(string searchTerm)
         {
-            // Логика для Log/Reg
-        }
-
-        private void Favourites_Click(object sender, RoutedEventArgs e)
-        {
-            // Логика для Favourites
-        }
-
-        private void WatchTogether_Click(object sender, RoutedEventArgs e)
-        {
-            // Логика для Watch Together
-        }
-
-        private void Titles_Click(object sender, RoutedEventArgs e)
-        {
-            // Логика для Titles
-        }
-
-        private void Window_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Escape)
+            searchTerm = searchTerm.ToLower();
+            var filteredResults = allAnimeTitles
+                .Where(a => a.Title.ToLower().Contains(searchTerm))
+                .OrderBy(a => a.Title)
+                .ToList();
+            ResultsListBox.Items.Clear();
+            foreach (var anime in filteredResults)
             {
-                CloseMenuPanel();
+                ResultsListBox.Items.Add(anime);
             }
         }
 
-        private void Window_MouseDown(object sender, MouseButtonEventArgs e)
+        private async Task SearchAnime(string searchTerm)
         {
-            if (e.OriginalSource == this)
+            try
             {
-                CloseMenuPanel();
+                var variables = new { search = searchTerm };
+
+                var content = new StringContent(
+                    Newtonsoft.Json.JsonConvert.SerializeObject(new { query = SearchGraphQLQuery, variables }),
+                    Encoding.UTF8, "application/json");
+
+                var response = await client.PostAsync("https://graphql.anilist.co", content);
+                var responseString = await response.Content.ReadAsStringAsync();
+
+                var jsonResponse = JObject.Parse(responseString);
+
+                var pageData = jsonResponse["data"]?["Page"];
+                if (pageData == null || pageData["media"] == null || pageData["media"].Type != JTokenType.Array)
+                {
+                    throw new Exception("Unexpected JSON structure: 'media' is not an array.");
+                }
+
+                var results = (JArray)pageData["media"];
+                allAnimeTitles.Clear();
+
+                var tasks = results.Select(async anime =>
+                {
+                    var animeObj = new Anime
+                    {
+                        Id = anime["id"]?.ToString() ?? "",
+                        Title = anime["title"]?["romaji"]?.ToString() ?? "No Title",
+                        CoverImage = anime["coverImage"]?["large"]?.ToString() ?? "",
+                        Description = anime["description"]?.ToString() ?? "No Description"
+                    };
+
+                    if (await HasEpisodes(animeObj))
+                    {
+                        allAnimeTitles.Add(animeObj);
+                    }
+                });
+
+                await Task.WhenAll(tasks);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error searching anime: {ex.Message}");
+                Console.WriteLine("Error searching anime:");
+                Console.WriteLine(ex.ToString());
             }
         }
 
-        private void CloseMenuPanel()
+        private async Task<bool> HasEpisodes(Anime anime)
         {
-            MenuPanel.Visibility = Visibility.Collapsed;
-            MenuPanel.Width = 0;
-            MenuButton.Visibility = Visibility.Visible; // Показать кнопку меню
-            Grid.SetColumnSpan(SearchPanel, 2); // Вернуть поиск на место
+            var episodes = await LoadEpisodes(anime.Id, anime.Title, checkOnly: true);
+            return episodes != null && episodes.Count > 0 && episodes[0].Title != "No episodes available";
+        }
+
+        private async Task<List<Episode>> LoadEpisodes(string animeId, string animeTitle, bool checkOnly = false)
+        {
+            try
+            {
+                var variables = new { id = int.Parse(animeId) };
+
+                var content = new StringContent(
+                    Newtonsoft.Json.JsonConvert.SerializeObject(new { query = EpisodesGraphQLQuery, variables }),
+                    Encoding.UTF8, "application/json");
+
+                var response = await client.PostAsync("https://graphql.anilist.co", content);
+                var responseString = await response.Content.ReadAsStringAsync();
+
+                var jsonResponse = JObject.Parse(responseString);
+
+                var mediaData = jsonResponse["data"]?["Media"];
+                if (mediaData == null)
+                {
+                    throw new Exception("Unexpected JSON structure: 'Media' is not present.");
+                }
+
+                var episodesToken = mediaData["streamingEpisodes"];
+                var episodes = new List<Episode>();
+
+                if (episodesToken != null && episodesToken.Type == JTokenType.Array && episodesToken.Any())
+                {
+                    episodes = episodesToken.ToObject<List<Episode>>();
+                }
+                else
+                {
+                    episodes = await SearchEpisodesJikan(animeTitle);
+
+                    if (episodes.Count == 0)
+                    {
+                        episodes.Add(new Episode { Title = "No episodes available" });
+                    }
+                }
+
+                if (checkOnly)
+                {
+                    return episodes;
+                }
+
+                EpisodesListBox.ItemsSource = episodes;
+                return episodes;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error loading episodes:");
+                Console.WriteLine(ex.ToString());
+                if (!checkOnly)
+                {
+                    MessageBox.Show($"Error loading episodes: {ex.Message}");
+                }
+                return new List<Episode> { new Episode { Title = "No episodes available" } };
+            }
+        }
+
+        private async Task<List<Episode>> SearchEpisodesJikan(string animeTitle)
+        {
+            var episodes = new List<Episode>();
+            try
+            {
+                var response = await client.GetStringAsync($"https://api.jikan.moe/v3/search/anime?q={animeTitle}&limit=1");
+                var jsonResponse = JObject.Parse(response);
+
+                var animeId = jsonResponse["results"]?.First()?["mal_id"]?.ToString();
+                if (animeId != null)
+                {
+                    var episodesResponse = await client.GetStringAsync($"https://api.jikan.moe/v3/anime/{animeId}/episodes");
+                    var episodesJson = JObject.Parse(episodesResponse);
+
+                    var episodesArray = episodesJson["episodes"]?.ToObject<JArray>();
+                    if (episodesArray != null)
+                    {
+                        episodes = episodesArray.Select(ep => new Episode
+                        {
+                            Title = ep["title"]?.ToString() ?? "No Title",
+                            Url = ep["video_url"]?.ToString() ?? "",
+                            Thumbnail = ep["image_url"]?.ToString() ?? ""
+                        }).ToList();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error loading episodes from Jikan API:");
+                Console.WriteLine(ex.ToString());
+            }
+            return episodes;
+        }
+
+        private async void ResultsListBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (ResultsListBox.SelectedItem is Anime selectedAnime)
+            {
+                ShowDetailView(selectedAnime);
+                await LoadEpisodes(selectedAnime.Id, selectedAnime.Title);
+            }
+        }
+
+        private void ShowDetailView(Anime selectedAnime)
+        {
+            DetailTitleTextBlock.Text = selectedAnime.Title;
+            DetailCoverImage.Source = new BitmapImage(new Uri(selectedAnime.CoverImage));
+            DetailDescriptionTextBlock.Text = selectedAnime.Description;
+
+            SearchGrid.Visibility = Visibility.Collapsed;
+            DetailGrid.Visibility = Visibility.Visible;
+        }
+
+        private void BackButton_Click(object sender, RoutedEventArgs e)
+        {
+            DetailGrid.Visibility = Visibility.Collapsed;
+            SearchGrid.Visibility = Visibility.Visible;
         }
     }
 
     public class Anime
     {
-        public int Id { get; set; }
-        public Title Title { get; set; }
+        public string Id { get; set; }
+        public string Title { get; set; }
+        public string CoverImage { get; set; }
         public string Description { get; set; }
-        public CoverImage CoverImage { get; set; }
-        public List<Episode> StreamingEpisodes { get; set; }
-    }
-
-    public class Title
-    {
-        public string Romaji { get; set; }
-    }
-
-    public class CoverImage
-    {
-        public string Large { get; set; }
     }
 
     public class Episode
     {
         public string Title { get; set; }
+        public string Thumbnail { get; set; }
         public string Url { get; set; }
     }
 }
