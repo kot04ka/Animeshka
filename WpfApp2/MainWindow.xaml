@@ -4,7 +4,7 @@
         Title="AnimeApp" Height="800" Width="1280" Background="#1e1e1e" Foreground="White"
         KeyDown="Window_KeyDown" MouseDown="Window_MouseDown">
     <Window.Resources>
-        <!-- Стили -->
+        <!-- Styles -->
         <Style x:Key="ClickableStyle" TargetType="Border">
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="CornerRadius" Value="20"/>
@@ -119,7 +119,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Панель поиска -->
+        <!-- Search Panel -->
         <StackPanel x:Name="SearchPanel" Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal" Background="#1e1e1e" Margin="10" HorizontalAlignment="Center" VerticalAlignment="Top">
             <Button Content="Random" Width="100" Height="35" Margin="0,0,10,0" Click="RandomButton_Click"/>
             <Border Style="{StaticResource SearchBoxBorderStyle}">
@@ -128,11 +128,11 @@
             </Border>
         </StackPanel>
 
-        <!-- Кнопка меню -->
+        <!-- Menu Button -->
         <Button x:Name="MenuButton" Style="{StaticResource MenuButtonStyle}" Content="☰" Click="MenuButton_Click"
                 HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10"/>
 
-        <!-- Панель результатов поиска -->
+        <!-- Search Results Panel -->
         <ScrollViewer x:Name="SearchResultsPanel" Grid.Row="1" Grid.Column="0" Margin="10" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly">
             <StackPanel>
                 <ItemsControl x:Name="EpisodesControl">
@@ -169,7 +169,7 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Панель меню -->
+        <!-- Menu Panel -->
         <Border x:Name="MenuPanel" Grid.RowSpan="2" Grid.Column="1" Background="#333" Width="0" HorizontalAlignment="Right" Visibility="Collapsed">
             <StackPanel Style="{StaticResource MenuPanelStyle}">
                 <Button x:Name="CloseMenuButton" Style="{StaticResource CloseMenuButtonStyle}" Content="✖" Click="MenuButton_Click"/>
@@ -181,7 +181,7 @@
             </StackPanel>
         </Border>
 
-        <!-- Панель для отображения деталей аниме -->
+        <!-- Details Panel -->
         <StackPanel x:Name="DetailsPanel" Grid.Row="1" Grid.ColumnSpan="2" Visibility="Collapsed" Margin="10">
             <StackPanel Orientation="Horizontal">
                 <Image x:Name="AnimeCoverImage" Width="250" Height="375" Margin="10"/>
