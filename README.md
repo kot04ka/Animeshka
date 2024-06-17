@@ -120,4 +120,3 @@ We welcome contributions to the Animeshka project! If you have any ideas for imp
 This project is licensed under the MIT License - see the LICENSE file for details.
 ```
 
-This README file provides a comprehensive overview of your project, instructions for setup and usage, and guidelines for contributing.
