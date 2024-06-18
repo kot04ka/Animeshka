@@ -1,0 +1,59 @@
+<UserControl x:Class="AnimeApp.AnimeTile"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Height="375" Width="250">
+    <UserControl.Resources>
+        <Style x:Key="ClickableStyle" TargetType="Border">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="CornerRadius" Value="20"/>
+            <EventSetter Event="MouseLeftButtonUp" Handler="OnAnimeClick"/>
+        </Style>
+        <Style x:Key="InfoGridStyle" TargetType="Grid">
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Setter Property="Opacity" Value="0"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Border}}" Value="True">
+                    <Setter Property="Visibility" Value="Visible"/>
+                    <Setter Property="Opacity" Value="1"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
+                    <Setter Property="Visibility" Value="Visible"/>
+                    <Setter Property="Opacity" Value="1"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OverlayStyle" TargetType="Border">
+            <Setter Property="Background" Value="#CC000000"/>
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="CornerRadius" Value="20"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Border}}" Value="True">
+                    <Setter Property="Opacity" Value="0.8"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
+                    <Setter Property="Opacity" Value="0.8"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+    <Border Style="{StaticResource ClickableStyle}" Margin="10">
+        <Grid>
+            <Border CornerRadius="20" ClipToBounds="True">
+                <Rectangle RadiusX="20" RadiusY="20">
+                    <Rectangle.Fill>
+                        <ImageBrush ImageSource="{Binding CoverImage.Large}" Stretch="Fill"/>
+                    </Rectangle.Fill>
+                </Rectangle>
+            </Border>
+            <Border Style="{StaticResource OverlayStyle}" CornerRadius="20"/>
+            <Grid Style="{StaticResource InfoGridStyle}">
+                <StackPanel VerticalAlignment="Top" Margin="5">
+                    <TextBlock Text="{Binding Title.Romaji}" FontSize="16" FontWeight="Bold" Foreground="White" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" TextAlignment="Center"/>
+                </StackPanel>
+                <StackPanel VerticalAlignment="Center" Margin="5">
+                    <TextBlock Text="{Binding Description}" FontSize="14" Foreground="White" TextWrapping="Wrap" MaxHeight="90" VerticalAlignment="Center" TextAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

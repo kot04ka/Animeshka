@@ -5,7 +5,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace AnimeApp
 {
@@ -95,33 +94,18 @@ namespace AnimeApp
 			}
 		}
 
-		private void OnAnimeClick(object sender, MouseButtonEventArgs e)
+		public void ShowAnimeDetails(Anime anime)
 		{
-			var border = sender as Border;
-			var anime = border.DataContext as Anime;
-			if (anime != null)
-			{
-				ShowAnimeDetails(anime);
-			}
-		}
-
-		private void ShowAnimeDetails(Anime anime)
-		{
-			DetailsPanel.Visibility = Visibility.Visible;
-			SearchResultsPanel.Visibility = Visibility.Collapsed;
-			MenuPanel.Visibility = Visibility.Collapsed;
+			DetailsPanel.ShowDetails(anime);
 			navigationStack.Push(DetailsPanel);
 
-			AnimeTitle.Text = anime.Title.Romaji;
-			AnimeDescription.Text = anime.Description;
-			AnimeCoverImage.Source = new BitmapImage(new Uri(anime.CoverImage.Large));
-
-			EpisodesList.ItemsSource = anime.StreamingEpisodes;
+			SearchResultsPanel.Visibility = Visibility.Collapsed;
+			MenuPanel.Visibility = Visibility.Collapsed;
 		}
 
 		private void ShowInitialPanel()
 		{
-			DetailsPanel.Visibility = Visibility.Collapsed;
+			DetailsPanel.HideDetails();
 			SearchResultsPanel.Visibility = Visibility.Visible;
 			MenuPanel.Visibility = Visibility.Visible; // Keep the menu button visible
 			navigationStack.Push(SearchResultsPanel);
