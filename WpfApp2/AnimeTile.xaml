@@ -3,54 +3,81 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Height="375" Width="250">
     <UserControl.Resources>
+        <!-- Style for clickable Border -->
         <Style x:Key="ClickableStyle" TargetType="Border">
             <Setter Property="Cursor" Value="Hand"/>
+            <!-- Sets cursor to hand -->
             <Setter Property="CornerRadius" Value="20"/>
+            <!-- Rounded corners -->
+            <!-- Mouse click event handler -->
             <EventSetter Event="MouseLeftButtonUp" Handler="OnAnimeClick"/>
         </Style>
+
+        <!-- Style for the Grid displaying information -->
         <Style x:Key="InfoGridStyle" TargetType="Grid">
             <Setter Property="Visibility" Value="Collapsed"/>
+            <!-- Hidden by default -->
             <Setter Property="Opacity" Value="0"/>
+            <!-- Transparent by default -->
             <Style.Triggers>
+                <!-- Trigger to show when mouse is over the Border -->
                 <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Border}}" Value="True">
                     <Setter Property="Visibility" Value="Visible"/>
                     <Setter Property="Opacity" Value="1"/>
                 </DataTrigger>
+                <!-- Trigger to show when mouse is over the Grid -->
                 <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
                     <Setter Property="Visibility" Value="Visible"/>
                     <Setter Property="Opacity" Value="1"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+
+        <!-- Style for overlay effect -->
         <Style x:Key="OverlayStyle" TargetType="Border">
             <Setter Property="Background" Value="#CC000000"/>
+            <!-- Semi-transparent black background -->
             <Setter Property="Opacity" Value="0"/>
+            <!-- Transparent by default -->
             <Setter Property="CornerRadius" Value="20"/>
+            <!-- Rounded corners -->
             <Style.Triggers>
+                <!-- Trigger to increase opacity when mouse is over the Border -->
                 <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Border}}" Value="True">
                     <Setter Property="Opacity" Value="0.8"/>
                 </DataTrigger>
+                <!-- Trigger to increase opacity when mouse is over the Grid -->
                 <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
                     <Setter Property="Opacity" Value="0.8"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
     </UserControl.Resources>
+
+    <!-- Main Border with ClickableStyle applied -->
     <Border Style="{StaticResource ClickableStyle}" Margin="10">
         <Grid>
+            <!-- Nested Border to clip the image with rounded corners -->
             <Border CornerRadius="20" ClipToBounds="True">
                 <Rectangle RadiusX="20" RadiusY="20">
                     <Rectangle.Fill>
+                        <!-- Binding to the cover image source -->
                         <ImageBrush ImageSource="{Binding CoverImage.Large}" Stretch="Fill"/>
                     </Rectangle.Fill>
                 </Rectangle>
             </Border>
+            <!-- Overlay with semi-transparent background applied with OverlayStyle -->
             <Border Style="{StaticResource OverlayStyle}" CornerRadius="20"/>
+            <!-- Grid for displaying anime information -->
             <Grid Style="{StaticResource InfoGridStyle}">
+                <!-- StackPanel for the title -->
                 <StackPanel VerticalAlignment="Top" Margin="5">
+                    <!-- Binding to the anime title -->
                     <TextBlock Text="{Binding Title.Romaji}" FontSize="16" FontWeight="Bold" Foreground="White" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" TextAlignment="Center"/>
                 </StackPanel>
+                <!-- StackPanel for the description -->
                 <StackPanel VerticalAlignment="Center" Margin="5">
+                    <!-- Binding to the anime description -->
                     <TextBlock Text="{Binding Description}" FontSize="14" Foreground="White" TextWrapping="Wrap" MaxHeight="90" VerticalAlignment="Center" TextAlignment="Center"/>
                 </StackPanel>
             </Grid>

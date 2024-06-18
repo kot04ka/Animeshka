@@ -2,15 +2,27 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Visibility="Collapsed" Margin="10">
+    <!-- Main container with horizontal layout -->
     <StackPanel Orientation="Horizontal">
+        <!-- Image for anime cover -->
         <Image x:Name="AnimeCoverImage" Width="250" Height="375" Margin="10"/>
+
+        <!-- StackPanel for text details -->
         <StackPanel Margin="10">
+            <!-- TextBlock for anime title -->
             <TextBlock x:Name="AnimeTitle" FontSize="24" FontWeight="Bold" Foreground="White"/>
+
+            <!-- TextBlock for anime description -->
             <TextBlock x:Name="AnimeDescription" FontSize="14" Foreground="White" TextWrapping="Wrap" MaxWidth="600"/>
+
+            <!-- Label for episodes section -->
             <TextBlock Text="Episodes:" FontSize="18" FontWeight="Bold" Foreground="White" Margin="10,20,0,0"/>
+
+            <!-- ItemsControl for the list of episodes -->
             <ItemsControl x:Name="EpisodesList">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
+                        <!-- TextBlock for individual episode title -->
                         <TextBlock Text="{Binding Title}" FontSize="14" Foreground="White" Margin="5"/>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
